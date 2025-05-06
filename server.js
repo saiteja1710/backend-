@@ -6,7 +6,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin:  "https://your-netlify-site.netlify.app" 
+    origin:  "https://your-netlify-site.netlify.app",
     methods: ["GET", "POST", "OPTIONS"]
     
   }
