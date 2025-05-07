@@ -4,12 +4,6 @@ const { Server } = require('socket.io');
 const socketHandler = require('./socketHandler'); // Your custom handler
 
 const app = express();
-
-// Health check or cold start prevention
-app.get('/ping', (req, res) => {
-  res.send("Pong from backend!");
-});
-
 // Create HTTP server
 const server = http.createServer(app);
 
