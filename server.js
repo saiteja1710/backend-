@@ -18,7 +18,7 @@ const io = new Server(server, {
   cors: {
     origin: [
       "http://localhost:65101", // Local dev
-      "https://resonant-toffee-47f057.netlify.app" // Your hosted frontend
+      "glowing-dusk-316ea7.netlify.app" // Your hosted frontend
     ],
     methods: ["GET", "POST"],
   }
