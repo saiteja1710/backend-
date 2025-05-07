@@ -16,10 +16,7 @@ const server = http.createServer(app);
 // Set up socket.io with proper CORS for Netlify + local dev
 const io = new Server(server, {
   cors: {
-    origin: [
-      "http://localhost:65101", // Local dev
-      "glowing-dusk-316ea7.netlify.app" // Your hosted frontend
-    ],
+    origin: "*",
     methods: ["GET", "POST"],
   }
 });
