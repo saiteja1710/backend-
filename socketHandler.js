@@ -15,7 +15,6 @@ module.exports = (io, socket) => {
         otherSocket.data.interest === gender
       ) {
         waitingUsers.delete(id);
-
         const matchedSocket = io.sockets.sockets.get(id);
 
         if (matchedSocket && matchedSocket.emit) {
@@ -33,7 +32,8 @@ module.exports = (io, socket) => {
     }
 
     waitingUsers.set(socket.id, socket);
-    console.log(`User ${socket.id} added to waiting list.`);
+    console.log(`User ${socket.id} added to waiting list.`); 
+    
   });
 
   socket.on('send-message', (message, toSocketId) => {
@@ -53,12 +53,15 @@ module.exports = (io, socket) => {
   
     }
 
-    socket.emit('disconect', "You disconnected. press find user");
+    socket.emit('disconect', "You disconnected. press find user"); 
+    waitingUsers.set(partnerSocketId,partnerSocket)
+    waitingUsers.set(socket.id,socket)
 
 
     // Remove active pair
     activePairs.delete(socket.id);
-    activePairs.delete(partnerSocketId);
+    activePairs.delete(partnerSocketId); 
+
   });
 
   socket.on('disconnect', () => {
