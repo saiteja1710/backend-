@@ -79,4 +79,40 @@ module.exports = (io, socket) => {
       activePairs.delete(socket.id);
     }
   });
+
+socket.on("video-offer", (offer, toSocketId) => {
+  const target = io.sockets.sockets.get(toSocketId);
+  if (target) {
+    target.emit("video-offer", offer, socket.id);
+  }
+});
+
+socket.on("video-answer", (answer, toSocketId) => {
+  const target = io.sockets.sockets.get(toSocketId);
+  if (target) {
+    target.emit("video-answer", answer);
+  }
+});
+
+socket.on("ice-candidate", (candidate, toSocketId) => {
+  const target = io.sockets.sockets.get(toSocketId);
+  if (target) {
+    target.emit("ice-candidate", candidate);
+  }
+});
+
+socket.on("start-call", (partnerId) => {
+  const partnerSocket = io.sockets.sockets.get(partnerId);
+  if (partnerSocket) {
+    partnerSocket.emit("start-video", socket.id);
+  }
+});
+
+socket.on("end-call", (partnerId) => {
+  const partnerSocket = io.sockets.sockets.get(partnerId);
+  if (partnerSocket) {
+    partnerSocket.emit("end-video");
+  }
+}); 
 };
+
