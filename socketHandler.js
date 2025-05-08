@@ -48,11 +48,12 @@ module.exports = (io, socket) => {
 
     // Notify both users
     if (partnerSocket) {
-      partnerSocket.emit('receive-message', " disconnected. press find user ");
+      partnerSocket.emit('disconect', " disconnected. press find user "); 
+
   
     }
 
-    socket.emit('receive-message', "You disconnected. press find user");
+    socket.emit('disconect', "You disconnected. press find user");
 
 
     // Remove active pair
