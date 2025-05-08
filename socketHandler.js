@@ -1,10 +1,16 @@
+//socketHandler.js
+
 const waitingUsers = new Map();
 const activePairs = new Map();
+const activeVideoCalls = new Set(); // Track active video calls
 
 module.exports = (io, socket) => {
   socket.on('user-details', ({ gender, interest }) => {
     socket.data = { gender, interest };
     console.log(`User ${socket.id} joined with gender: ${gender}, interest: ${interest}`);
+
+    // If this user was in a previous chat, clean up first
+    cleanupUserConnections(socket.id);
 
     for (let [id, otherSocket] of waitingUsers) {
       if (id === socket.id) continue;
@@ -32,8 +38,7 @@ module.exports = (io, socket) => {
     }
 
     waitingUsers.set(socket.id, socket);
-    console.log(`User ${socket.id} added to waiting list.`); 
-    
+    console.log(`User ${socket.id} added to waiting list.`);
   });
 
   socket.on('send-message', (message, toSocketId) => {
@@ -46,73 +51,107 @@ module.exports = (io, socket) => {
   socket.on('disconnect-chat', (partnerSocketId) => {
     const partnerSocket = io.sockets.sockets.get(partnerSocketId);
 
-    // Notify both users
-    if (partnerSocket) {
-      partnerSocket.emit('disconect', " disconnected. press find user "); 
-
-  
+    // End any active video call
+    if (activeVideoCalls.has(`${socket.id}-${partnerSocketId}`) ||
+      activeVideoCalls.has(`${partnerSocketId}-${socket.id}`)) {
+      handleVideoCallEnd(socket.id, partnerSocketId);
     }
 
-    socket.emit('disconect', "You disconnected. press find user"); 
-    waitingUsers.set(partnerSocketId,partnerSocket)
-    waitingUsers.set(socket.id,socket)
+    // Notify both users
+    if (partnerSocket) {
+      partnerSocket.emit('disconect', "Partner disconnected. Press find user to find a new match.");
+    }
 
+    socket.emit('disconect', "You disconnected. Press find user to find a new match.");
+
+    // Add users back to waiting pool if they're still connected
+    if (partnerSocket) {
+      waitingUsers.set(partnerSocketId, partnerSocket);
+    }
+    waitingUsers.set(socket.id, socket);
 
     // Remove active pair
     activePairs.delete(socket.id);
-    activePairs.delete(partnerSocketId); 
-
+    activePairs.delete(partnerSocketId);
   });
 
   socket.on('disconnect', () => {
-    waitingUsers.delete(socket.id);
-    const partnerId = activePairs.get(socket.id);
+    cleanupUserConnections(socket.id);
+  });
+
+  // Video chat handlers
+  socket.on("video-offer", (offer, toSocketId) => {
+    const target = io.sockets.sockets.get(toSocketId);
+    if (target) {
+      console.log(`Forwarding video offer from ${socket.id} to ${toSocketId}`);
+      target.emit("video-offer", offer, socket.id);
+      activeVideoCalls.add(`${socket.id}-${toSocketId}`);
+    }
+  });
+
+  socket.on("video-answer", (answer, toSocketId) => {
+    const target = io.sockets.sockets.get(toSocketId);
+    if (target) {
+      console.log(`Forwarding video answer from ${socket.id} to ${toSocketId}`);
+      target.emit("video-answer", answer);
+    }
+  });
+
+  socket.on("ice-candidate", (candidate, toSocketId) => {
+    const target = io.sockets.sockets.get(toSocketId);
+    if (target) {
+      target.emit("ice-candidate", candidate);
+    }
+  });
+
+  socket.on("start-call", (partnerId) => {
+    const partnerSocket = io.sockets.sockets.get(partnerId);
+    if (partnerSocket) {
+      console.log(`User ${socket.id} initiated call with ${partnerId}`);
+      partnerSocket.emit("start-video", socket.id);
+      activeVideoCalls.add(`${socket.id}-${partnerId}`);
+    }
+  });
+
+  socket.on("end-call", (partnerId) => {
+    handleVideoCallEnd(socket.id, partnerId);
+  });
+
+  // Helper function to clean up user connections
+  function cleanupUserConnections(userId) {
+    waitingUsers.delete(userId);
+    const partnerId = activePairs.get(userId);
 
     if (partnerId) {
       const partnerSocket = io.sockets.sockets.get(partnerId);
       if (partnerSocket) {
-        partnerSocket.emit('receive-message', "User disconnected. press find user");
-    
+        partnerSocket.emit('disconect', "Partner disconnected unexpectedly. Press find user to find a new match.");
       }
 
+      // End any active video call
+      handleVideoCallEnd(userId, partnerId);
+
       activePairs.delete(partnerId);
-      activePairs.delete(socket.id);
+      activePairs.delete(userId);
     }
-  });
 
-socket.on("video-offer", (offer, toSocketId) => {
-  const target = io.sockets.sockets.get(toSocketId);
-  if (target) {
-    target.emit("video-offer", offer, socket.id);
+    // Clean up any remaining video calls
+    for (const callId of activeVideoCalls) {
+      if (callId.includes(userId)) {
+        activeVideoCalls.delete(callId);
+      }
+    }
   }
-});
 
-socket.on("video-answer", (answer, toSocketId) => {
-  const target = io.sockets.sockets.get(toSocketId);
-  if (target) {
-    target.emit("video-answer", answer);
-  }
-});
+  // Helper function to handle video call ending
+  function handleVideoCallEnd(userId, partnerId) {
+    activeVideoCalls.delete(`${userId}-${partnerId}`);
+    activeVideoCalls.delete(`${partnerId}-${userId}`);
 
-socket.on("ice-candidate", (candidate, toSocketId) => {
-  const target = io.sockets.sockets.get(toSocketId);
-  if (target) {
-    target.emit("ice-candidate", candidate);
+    const partnerSocket = io.sockets.sockets.get(partnerId);
+    if (partnerSocket) {
+      console.log(`Ending video call between ${userId} and ${partnerId}`);
+      partnerSocket.emit("end-video");
+    }
   }
-});
-
-socket.on("start-call", (partnerId) => {
-  const partnerSocket = io.sockets.sockets.get(partnerId);
-  if (partnerSocket) {
-    partnerSocket.emit("start-video", socket.id);
-  }
-});
-
-socket.on("end-call", (partnerId) => {
-  const partnerSocket = io.sockets.sockets.get(partnerId);
-  if (partnerSocket) {
-    partnerSocket.emit("end-video");
-  }
-}); 
 };
-
