@@ -1,13 +1,9 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const socketHandler = require('./socketHandler'); // Your custom handler
-
+const socketHandler = require('./socketHandler'); // Handles WebSocket communication
 const app = express();
-// Create HTTP server
 const server = http.createServer(app);
-
-// Set up socket.io with proper CORS for Netlify + local dev
 const io = new Server(server, {
   cors: {
     origin: "*",
@@ -15,12 +11,13 @@ const io = new Server(server, {
   }
 });
 
-// WebSocket connection
+// Serve static files (frontend)
+
+
 io.on('connection', socket => {
-  console.log(`✅ User connected: ${socket.id}`);
+  console.log(`User connected: ${socket.id}`);
   socketHandler(io, socket);
 });
 
-// Use Render-supplied port
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`🚀 Server listening on port ${PORT}`));
+server.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
